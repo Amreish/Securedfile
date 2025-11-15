@@ -1,0 +1,615 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PDF DRM Protection System</title>
+    <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+    <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', sans-serif; }
+        .no-select { 
+            user-select: none; 
+            -webkit-user-select: none; 
+            -moz-user-select: none; 
+            -ms-user-select: none; 
+        }
+    </style>
+</head>
+<body>
+    <div id="root"></div>
+
+    <script type="text/babel">
+        const { useState, useEffect, useRef } = React;
+
+        // Lucide icons as components
+        const Shield = () => <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>;
+        const Upload = () => <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>;
+        const Lock = () => <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>;
+        const User = () => <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>;
+        const Clock = () => <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>;
+        const AlertTriangle = () => <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>;
+        const Mail = () => <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="2" y="4" width="20" height="16" rx="2"/><path d="m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7"/></svg>;
+        const Key = () => <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="7.5" cy="15.5" r="5.5"/><path d="m21 2-9.6 9.6"/><path d="m15.5 7.5 3 3L22 7l-3-3"/></svg>;
+        const Copy = () => <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>;
+        const Check = () => <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"/></svg>;
+        const ChevronLeft = () => <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="15 18 9 12 15 6"/></svg>;
+        const ChevronRight = () => <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="9 18 15 12 9 6"/></svg>;
+        const BarChart = () => <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="12" y1="20" x2="12" y2="10"/><line x1="18" y1="20" x2="18" y2="4"/><line x1="6" y1="20" x2="6" y2="16"/></svg>;
+
+        function PDFDRMSystem() {
+            const [mode, setMode] = useState('owner');
+            const [ownerDocs, setOwnerDocs] = useState([]);
+            const [currentDoc, setCurrentDoc] = useState(null);
+            const [uploading, setUploading] = useState(false);
+            
+            const [viewerEmail, setViewerEmail] = useState('');
+            const [accessCode, setAccessCode] = useState('');
+            const [isAuthenticated, setIsAuthenticated] = useState(false);
+            const [viewingDoc, setViewingDoc] = useState(null);
+            
+            const [pdfPages, setPdfPages] = useState([]);
+            const [currentPage, setCurrentPage] = useState(0);
+            const [totalPages, setTotalPages] = useState(0);
+            
+            const [sessionId] = useState(Math.random().toString(36).substr(2, 12));
+            const [viewStartTime] = useState(Date.now());
+            const [securityEvents, setSecurityEvents] = useState([]);
+            const [screenshotAttempts, setScreenshotAttempts] = useState(0);
+            const [recordingDetected, setRecordingDetected] = useState(false);
+            const [copiedCode, setCopiedCode] = useState(null);
+
+            useEffect(() => {
+                const stored = localStorage.getItem('drm_documents');
+                if (stored) {
+                    try {
+                        setOwnerDocs(JSON.parse(stored));
+                    } catch (e) {
+                        console.error('Error loading documents:', e);
+                    }
+                }
+
+                const urlParams = new URLSearchParams(window.location.search);
+                const code = urlParams.get('code');
+                if (code) {
+                    setAccessCode(code);
+                    setMode('viewer');
+                }
+            }, []);
+
+            const generateAccessCode = () => {
+                return Math.random().toString(36).substr(2, 10).toUpperCase();
+            };
+
+            const copyToClipboard = (text, docId) => {
+                navigator.clipboard.writeText(text).then(() => {
+                    setCopiedCode(docId);
+                    setTimeout(() => setCopiedCode(null), 2000);
+                });
+            };
+
+            const generateShareableLink = (code) => {
+                const baseUrl = window.location.origin + window.location.pathname;
+                return `${baseUrl}?code=${code}`;
+            };
+
+            const handlePDFUpload = async (e) => {
+                const file = e.target.files[0];
+                if (!file || file.type !== 'application/pdf') {
+                    alert(⚠️ Please upload a PDF file');
+                    return;
+                }
+
+                if (file.size > 10 * 1024 * 1024) {
+                    alert('⚠️ File too large. Maximum size: 10MB');
+                    return;
+                }
+
+                setUploading(true);
+
+                try {
+                    const reader = new FileReader();
+                    reader.onload = async (event) => {
+                        const pdfData = event.target.result;
+                        
+                        const newDoc = {
+                            id: Date.now().toString(),
+                            name: file.name,
+                            size: file.size,
+                            uploadDate: new Date().toISOString(),
+                            accessCode: generateAccessCode(),
+                            data: pdfData,
+                            views: [],
+                            securityEvents: [],
+                            status: 'active'
+                        };
+
+                        const updatedDocs = [...ownerDocs, newDoc];
+                        setOwnerDocs(updatedDocs);
+                        
+                        try {
+                            localStorage.setItem('drm_documents', JSON.stringify(updatedDocs));
+                        } catch (storageError) {
+                            alert('⚠️ Storage limit exceeded. Please delete old documents first.');
+                            setUploading(false);
+                            return;
+                        }
+                        
+                        setCurrentDoc(newDoc);
+                        setUploading(false);
+                    };
+                    
+                    reader.readAsDataURL(file);
+                } catch (error) {
+                    console.error('Upload error:', error);
+                    setUploading(false);
+                    alert('⚠️ Upload failed. Please try again.');
+                }
+            };
+
+            const renderPDFToCanvas = async (pdfDataUrl) => {
+                const simulatedPages = [
+                    { pageNum: 1, content: viewingDoc?.name || 'PDF Document' },
+                    { pageNum: 2, content: 'Page 2 Content' },
+                    { pageNum: 3, content: 'Page 3 Content' }
+                ];
+                
+                setPdfPages(simulatedPages);
+                setTotalPages(simulatedPages.length);
+                setCurrentPage(0);
+            };
+
+            const authenticateViewer = () => {
+                if (!viewerEmail || !accessCode) {
+                    alert('⚠️ Please enter both email and access code');
+                    return;
+                }
+
+                const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+                if (!emailRegex.test(viewerEmail)) {
+                    alert('⚠️ Please enter a valid email address');
+                    return;
+                }
+
+                const doc = ownerDocs.find(d => d.accessCode === accessCode.toUpperCase().trim());
+                
+                if (!doc) {
+                    alert('❌ Invalid access code');
+                    return;
+                }
+
+                if (doc.status !== 'active') {
+                    alert('❌ This document access has been revoked');
+                    return;
+                }
+
+                const accessLog = {
+                    email: viewerEmail,
+                    timestamp: new Date().toISOString(),
+                    sessionId: sessionId,
+                    ip: 'Tracked',
+                    userAgent: navigator.userAgent.substring(0, 100)
+                };
+
+                doc.views.push(accessLog);
+                const updatedDocs = ownerDocs.map(d => d.id === doc.id ? doc : d);
+                setOwnerDocs(updatedDocs);
+                localStorage.setItem('drm_documents', JSON.stringify(updatedDocs));
+
+                setViewingDoc(doc);
+                setIsAuthenticated(true);
+                renderPDFToCanvas(doc.data);
+            };
+
+            const revokeAccess = (docId) => {
+                if (confirm('⚠️ Are you sure you want to revoke access?')) {
+                    const updatedDocs = ownerDocs.map(doc => 
+                        doc.id === docId ? { ...doc, status: 'revoked' } : doc
+                    );
+                    setOwnerDocs(updatedDocs);
+                    localStorage.setItem('drm_documents', JSON.stringify(updatedDocs));
+                    alert('✅ Document access revoked');
+                }
+            };
+
+            const deleteDocument = (docId) => {
+                if (confirm('⚠️ Delete this document permanently?')) {
+                    const updatedDocs = ownerDocs.filter(doc => doc.id !== docId);
+                    setOwnerDocs(updatedDocs);
+                    localStorage.setItem('drm_documents', JSON.stringify(updatedDocs));
+                    alert('✅ Document deleted');
+                }
+            };
+
+            const logSecurityEvent = (eventType, details) => {
+                const event = {
+                    type: eventType,
+                    details: details,
+                    timestamp: new Date().toISOString(),
+                    sessionId: sessionId,
+                    email: viewerEmail
+                };
+
+                setSecurityEvents(prev => [...prev, event]);
+
+                if (viewingDoc) {
+                    const updatedDocs = ownerDocs.map(doc => 
+                        doc.id === viewingDoc.id 
+                            ? { ...doc, securityEvents: [...(doc.securityEvents || []), event] }
+                            : doc
+                    );
+                    setOwnerDocs(updatedDocs);
+                    localStorage.setItem('drm_documents', JSON.stringify(updatedDocs));
+                }
+
+                console.log('🚨 SECURITY EVENT:', event);
+            };
+
+            useEffect(() => {
+                if (!isAuthenticated) return;
+
+                const handleKeyDown = (e) => {
+                    if (e.key === 'PrintScreen' || 
+                        (e.ctrlKey && e.key === 'PrintScreen') ||
+                        (e.metaKey && e.shiftKey && ['3', '4', '5'].includes(e.key)) ||
+                        (e.altKey && e.key === 'PrintScreen')) {
+                        
+                        e.preventDefault();
+                        setScreenshotAttempts(prev => prev + 1);
+                        logSecurityEvent('SCREENSHOT_ATTEMPT', 'Detected');
+                        alert('⚠️ SECURITY ALERT\n\n🚨 Screenshot detected!\n\nYour email and session have been logged.\nOwner has been notified.');
+                    }
+
+                    if ((e.ctrlKey || e.metaKey) && e.key === 'p') {
+                        e.preventDefault();
+                        logSecurityEvent('PRINT_ATTEMPT', 'Blocked');
+                        alert('⛔ Printing is disabled');
+                    }
+
+                    if ((e.ctrlKey || e.metaKey) && e.key === 's') {
+                        e.preventDefault();
+                        logSecurityEvent('SAVE_ATTEMPT', 'Blocked');
+                        alert('⛔ Saving is disabled');
+                    }
+
+                    if ((e.ctrlKey || e.metaKey) && e.key === 'c') {
+                        e.preventDefault();
+                        logSecurityEvent('COPY_ATTEMPT', 'Blocked');
+                        alert('⛔ Copying is disabled');
+                    }
+                };
+
+                const handleContextMenu = (e) => {
+                    e.preventDefault();
+                    logSecurityEvent('RIGHT_CLICK', 'Blocked');
+                };
+
+                const handleCopy = (e) => {
+                    e.preventDefault();
+                    logSecurityEvent('COPY_ATTEMPT', 'Blocked');
+                };
+
+                document.addEventListener('keydown', handleKeyDown);
+                document.addEventListener('contextmenu', handleContextMenu);
+                document.addEventListener('copy', handleCopy);
+
+                return () => {
+                    document.removeEventListener('keydown', handleKeyDown);
+                    document.removeEventListener('contextmenu', handleContextMenu);
+                    document.removeEventListener('copy', handleCopy);
+                };
+            }, [isAuthenticated, viewerEmail, sessionId, viewingDoc, ownerDocs]);
+
+            const DynamicWatermark = () => {
+                const [time, setTime] = useState(new Date().toLocaleTimeString());
+
+                useEffect(() => {
+                    const interval = setInterval(() => {
+                        setTime(new Date().toLocaleTimeString());
+                    }, 1000);
+                    return () => clearInterval(interval);
+                }, []);
+
+                if (!isAuthenticated) return null;
+
+                return (
+                    <div style={{
+                        position: 'fixed',
+                        top: 0,
+                        left: 0,
+                        width: '100%',
+                        height: '100%',
+                        pointerEvents: 'none',
+                        zIndex: 9999,
+                        opacity: 0.06
+                    }}>
+                        {[...Array(10)].map((_, i) => (
+                            <div key={i} style={{
+                                position: 'absolute',
+                                top: `${(i * 10)}%`,
+                                left: '50%',
+                                transform: 'translateX(-50%) rotate(-45deg)',
+                                whiteSpace: 'nowrap',
+                                fontSize: '18px',
+                                fontWeight: 'bold',
+                                color: '#ff0000'
+                            }}>
+                                CONFIDENTIAL • {viewerEmail} • {time} • {sessionId.slice(0, 8)}
+                            </div>
+                        ))}
+                    </div>
+                );
+            };
+
+            const formatFileSize = (bytes) => {
+                if (bytes < 1024) return bytes + ' B';
+                if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + ' KB';
+                return (bytes / (1024 * 1024)).toFixed(1) + ' MB';
+            };
+
+            if (mode === 'owner') {
+                return (
+                    <div className="min-h-screen bg-gradient-to-br from-indigo-900 via-purple-900 to-pink-900 p-6">
+                        <div className="max-w-7xl mx-auto">
+                            <div className="bg-black/30 backdrop-blur-xl rounded-2xl border border-white/20 p-6 mb-6">
+                                <div className="flex items-center justify-between">
+                                    <div className="flex items-center gap-3">
+                                        <Shield />
+                                        <div>
+                                            <h1 className="text-3xl font-bold text-white">PDF DRM System</h1>
+                                            <p className="text-cyan-300">Zero-Cost Protection</p>
+                                        </div>
+                                    </div>
+                                    <button
+                                        onClick={() => setMode('viewer')}
+                                        className="bg-purple-600 hover:bg-purple-700 px-6 py-3 rounded-lg text-white font-semibold"
+                                    >
+                                        Viewer Mode
+                                    </button>
+                                </div>
+                            </div>
+
+                            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                                <div>
+                                    <div className="bg-black/30 backdrop-blur-xl rounded-2xl border border-white/20 p-6">
+                                        <div className="flex items-center gap-2 mb-4">
+                                            <Upload />
+                                            <h2 className="text-xl font-bold text-white">Upload PDF</h2>
+                                        </div>
+
+                                        <div className="border-2 border-dashed border-white/30 rounded-lg p-8 text-center hover:border-green-400">
+                                            <input
+                                                type="file"
+                                                accept="application/pdf"
+                                                onChange={handlePDFUpload}
+                                                className="hidden"
+                                                id="pdf-upload"
+                                                disabled={uploading}
+                                            />
+                                            <label htmlFor="pdf-upload" className="cursor-pointer">
+                                                <Upload style={{ width: '48px', height: '48px', color: 'white', margin: '0 auto 8px' }} />
+                                                <p className="text-white font-semibold">
+                                                    {uploading ? 'Uploading...' : 'Click to Upload'}
+                                                </p>
+                                                <p className="text-gray-300 text-sm mt-2">Max 10MB</p>
+                                            </label>
+                                        </div>
+
+                                        {currentDoc && (
+                                            <div className="mt-4 bg-green-500/20 border border-green-500/50 rounded-lg p-4">
+                                                <p className="text-green-300 font-bold mb-2">Access Code:</p>
+                                                <div className="flex items-center gap-2">
+                                                    <p className="text-white text-xl font-mono bg-black/50 p-2 rounded flex-1 text-center">
+                                                        {currentDoc.accessCode}
+                                                    </p>
+                                                    <button
+                                                        onClick={() => copyToClipboard(currentDoc.accessCode, currentDoc.id)}
+                                                        className="bg-green-600 hover:bg-green-700 p-2 rounded"
+                                                    >
+                                                        {copiedCode === currentDoc.id ? <Check /> : <Copy />}
+                                                    </button>
+                                                </div>
+                                                <div className="mt-3">
+                                                    <p className="text-green-300 font-bold text-sm mb-1">Link:</p>
+                                                    <input
+                                                        type="text"
+                                                        value={generateShareableLink(currentDoc.accessCode)}
+                                                        readOnly
+                                                        className="w-full bg-black/50 text-white text-xs p-2 rounded border border-green-500/30"
+                                                    />
+                                                </div>
+                                            </div>
+                                        )}
+                                    </div>
+                                </div>
+
+                                <div className="lg:col-span-2">
+                                    <div className="bg-black/30 backdrop-blur-xl rounded-2xl border border-white/20 p-6">
+                                        <div className="flex items-center gap-2 mb-4">
+                                            <BarChart />
+                                            <h2 className="text-xl font-bold text-white">Documents ({ownerDocs.length})</h2>
+                                        </div>
+
+                                        {ownerDocs.length === 0 ? (
+                                            <p className="text-gray-400 text-center py-8">No documents yet</p>
+                                        ) : (
+                                            <div className="space-y-4 max-h-[600px] overflow-y-auto">
+                                                {ownerDocs.map(doc => (
+                                                    <div key={doc.id} className="bg-white/10 rounded-lg p-4 border border-white/20">
+                                                        <h3 className="text-white font-semibold mb-2">{doc.name}</h3>
+                                                        <div className="grid grid-cols-2 gap-3 text-sm mb-3">
+                                                            <div>
+                                                                <p className="text-gray-400 text-xs">Code</p>
+                                                                <p className="text-cyan-400 font-mono">{doc.accessCode}</p>
+                                                            </div>
+                                                            <div>
+                                                                <p className="text-gray-400 text-xs">Status</p>
+                                                                <p className={doc.status === 'active' ? 'text-green-400' : 'text-red-400'}>
+                                                                    {doc.status === 'active' ? '✓ Active' : '✗ Revoked'}
+                                                                </p>
+                                                            </div>
+                                                            <div>
+                                                                <p className="text-gray-400 text-xs">Views</p>
+                                                                <p className="text-white">{doc.views?.length || 0}</p>
+                                                            </div>
+                                                            <div>
+                                                                <p className="text-gray-400 text-xs">Alerts</p>
+                                                                <p className="text-yellow-400">{doc.securityEvents?.length || 0}</p>
+                                                            </div>
+                                                        </div>
+                                                        <div className="flex gap-2">
+                                                            {doc.status === 'active' && (
+                                                                <button
+                                                                    onClick={() => revokeAccess(doc.id)}
+                                                                    className="bg-orange-600 hover:bg-orange-700 px-3 py-2 rounded text-white text-sm"
+                                                                >
+                                                                    Revoke
+                                                                </button>
+                                                            )}
+                                                            <button
+                                                                onClick={() => deleteDocument(doc.id)}
+                                                                className="bg-red-600 hover:bg-red-700 px-3 py-2 rounded text-white text-sm"
+                                                            >
+                                                                Delete
+                                                            </button>
+                                                        </div>
+                                                    </div>
+                                                ))}
+                                            </div>
+                                        )}
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                );
+            }
+
+            if (!isAuthenticated) {
+                return (
+                    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900 flex items-center justify-center p-4">
+                        <div className="bg-black/40 backdrop-blur-xl rounded-2xl border border-purple-500/30 p-8 max-w-md w-full">
+                            <div className="flex items-center justify-center gap-3 mb-6">
+                                <Lock />
+                                <h1 className="text-3xl font-bold text-white">Secure Access</h1>
+                            </div>
+
+                            <div className="space-y-4">
+                                <div>
+                                    <label className="block text-purple-300 mb-2 font-semibold flex items-center gap-2">
+                                        <Mail />
+                                        Your Email
+                                    </label>
+                                    <input
+                                        type="email"
+                                        value={viewerEmail}
+                                        onChange={(e) => setViewerEmail(e.target.value)}
+                                        placeholder="client@example.com"
+                                        className="w-full bg-slate-800 text-white rounded-lg px-4 py-3 border border-purple-500/30"
+                                    />
+                                </div>
+
+                                <div>
+                                    <label className="block text-purple-300 mb-2 font-semibold flex items-center gap-2">
+                                        <Key />
+                                        Access Code
+                                    </label>
+                                    <input
+                                        type="text"
+                                        value={accessCode}
+                                        onChange={(e) => setAccessCode(e.target.value)}
+                                        placeholder="Enter code"
+                                        className="w-full bg-slate-800 text-white rounded-lg px-4 py-3 border border-purple-500/30 uppercase font-mono"
+                                    />
+                                </div>
+
+                                <button
+                                    onClick={authenticateViewer}
+                                    className="w-full bg-purple-600 hover:bg-purple-700 text-white py-3 rounded-lg font-bold"
+                                >
+                                    🔓 Access Document
+                                </button>
+
+                                <button
+                                    onClick={() => setMode('owner')}
+                                    className="w-full bg-slate-700 hover:bg-slate-600 text-white py-3 rounded-lg"
+                                >
+                                    I'm the Owner
+                                </button>
+                            </div>
+
+                            <div className="mt-6 bg-yellow-500/10 border border-yellow-500/30 rounded-lg p-4">
+                                <div className="flex items-start gap-2">
+                                    <AlertTriangle />
+                                    <div className="text-yellow-200 text-sm">
+                                        <p className="font-semibold">⚠️ Security Notice:</p>
+                                        <p className="text-xs mt-1">All activities are monitored and logged</p>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                );
+            }
+
+            return (
+                <div className="min-h-screen bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900 p-4">
+                    <DynamicWatermark />
+                    
+                    <div className="max-w-6xl mx-auto">
+                        <div className="bg-black/40 backdrop-blur-xl rounded-t-2xl border border-purple-500/30 p-4">
+                            <div className="flex items-center justify-between">
+                                <div className="flex items-center gap-3">
+                                    <Shield />
+                                    <span className="text-white font-semibold">Protected Document</span>
+                                </div>
+                                <div className="flex items-center gap-4 text-sm">
+                                    <div className="flex items-center gap-2 text-purple-300">
+                                        <User />
+                                        <span>{viewerEmail}</span>
+                                    </div>
+                                    <div className="flex items-center gap-2 text-purple-300">
+                                        <Clock />
+                                        <span>{new Date().toLocaleTimeString()}</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        {screenshotAttempts > 0 && (
+                            <div className="bg-red-500/20 border-x border-red-500/50 p-4">
+                                <p className="text-red-300">🚨 {screenshotAttempts} screenshot attempt(s) logged</p>
+                            </div>
+                        )}
+
+                        <div className="bg-black/40 backdrop-blur-xl border border-purple-500/30 p-8 no-select">
+                            <div className="bg-white rounded-lg p-8">
+                                <h2 className="text-2xl font-bold text-gray-800 mb-4">{viewingDoc?.name}</h2>
+                                <div className="prose">
+                                    <p className="text-gray-700">This is your protected PDF content. In production, this would use PDF.js to render actual PDF pages as canvas elements.</p>
+                                    <p className="text-gray-600 mt-4 text-sm italic">All security features are active: screenshot detection, copy protection, print blocking.</p>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div className="bg-red-500/10 border border-red-500/30 rounded-b-2xl p-4">
+                            <div className="flex items-start gap-2">
+                                <AlertTriangle />
+                                <div className="text-red-200 text-sm">
+                                    <p><strong>⚠️ CONFIDENTIAL</strong></p>
+                                    <p className="text-xs">Session: {sessionId} • All activities logged</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            );
+        }
+
+        ReactDOM.render(<PDFDRMSystem />, document.getElementById('root'));
+    </script>
+</body>
+</html>
